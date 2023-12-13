@@ -2,11 +2,14 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <queue> // Include this for priority_queue
 #include <string>
 #include <map>
 #include <algorithm>
+#include <functional> 
 
 struct Order {
+    std::string order_id;
     std::string client_order_id;
     std::string instrument;
     int side;
@@ -14,8 +17,16 @@ struct Order {
     double price;
 
     // Define a constructor that takes the necessary arguments.
-    Order(const std::string& cid, const std::string& instr, int sd, double pr, int qty)
-        : client_order_id(cid), instrument(instr), side(sd), price(pr), quantity(qty) {}
+    Order(const std::string& id, const std::string& cid, const std::string& instr, int sd, double pr, int qty)
+        : order_id(id), client_order_id(cid), instrument(instr), side(sd), price(pr), quantity(qty) {}
+
+    void print() const {
+        std::cout << "Order - Client Order ID: " << client_order_id
+                  << ", Instrument: " << instrument
+                  << ", Side: " << (side == 1 ? "Buy" : "Sell")
+                  << ", Quantity: " << quantity
+                  << ", Price: " << price << std::endl;
+    }
 };
 
 struct ExecutionReport {
@@ -39,7 +50,7 @@ struct ExecutionReport {
 std::vector<Order> read_orders_from_csv(const std::string& file_path);
 bool validate_order(const Order& order); // Assume this is implemented elsewhere.
 std::string generate_order_id(int& count); // Assume this is implemented elsewhere.
-std::vector<ExecutionReport> process_orders(const std::vector<Order>& orders);
+std::vector<ExecutionReport> process_orders(std::vector<Order>& orders);
 
 int safe_stoi(const std::string& str) {
     // Check if the string is empty or contains any non-digit characters
@@ -50,86 +61,120 @@ int safe_stoi(const std::string& str) {
 }
 
 
-#include <iostream> // Make sure this is included for std::cout
+struct BuyOrderCompare {
+    bool operator()(const Order& lhs, const Order& rhs) const {
+        if (lhs.price == rhs.price) {
+            return lhs.client_order_id > rhs.client_order_id; // Earlier order first
+        }
+        return lhs.price < rhs.price; // Higher price first
+    }
+};
 
-std::vector<ExecutionReport> process_orders(const std::vector<Order>& orders) {
+struct SellOrderCompare {
+    bool operator()(const Order& lhs, const Order& rhs) const {
+        if (lhs.price == rhs.price) {
+            return lhs.client_order_id > rhs.client_order_id; // Earlier order first
+        }
+        return lhs.price > rhs.price; // Lower price first
+    }
+};
+
+std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
     std::vector<ExecutionReport> execution_reports;
-    std::map<double, std::vector<Order>> buy_orders; // Sorted by price in descending order
-    int order_count = 0;
+    std::priority_queue<Order, std::vector<Order>, BuyOrderCompare> buy_order_book;
+    std::priority_queue<Order, std::vector<Order>, SellOrderCompare> sell_order_book;
 
-    std::cout << "Starting order processing. Total orders: " << orders.size() << std::endl;
-
-    for (const Order& incoming_order : orders) {
-        std::cout << "Processing order: " << incoming_order.client_order_id << std::endl;
-
-        // Validate the incoming order first
+    for (Order incoming_order : orders) { // Create a modifiable copy of each incoming_order
+        std::cout << "Processing order: " << incoming_order.client_order_id << "\n";
         if (!validate_order(incoming_order)) {
-            std::cout << "Order " << incoming_order.client_order_id << " is invalid." << std::endl;
-            execution_reports.push_back({generate_order_id(order_count), incoming_order.client_order_id,
-                                         incoming_order.instrument, incoming_order.side, "Rejected",
-                                         incoming_order.quantity, incoming_order.price});
-            continue; // Skip invalid orders, alternatively add a rejected report
+            execution_reports.push_back(ExecutionReport(
+                incoming_order.order_id, incoming_order.client_order_id,
+                incoming_order.instrument, incoming_order.side, "Rejected",
+                incoming_order.quantity, incoming_order.price
+            ));
+            continue;
         }
 
         if (incoming_order.side == 1) { // Buy order
-            std::cout << "Adding buy order to order book: " << incoming_order.client_order_id << std::endl;
-            // Add to buy order book
-            buy_orders[incoming_order.price].push_back(incoming_order);
-            // Generate a "New" execution report for the buy order
-            execution_reports.push_back({generate_order_id(order_count), incoming_order.client_order_id,
-                                         incoming_order.instrument, incoming_order.side, "New",
-                                         incoming_order.quantity, incoming_order.price});
-        } else if (incoming_order.side == 2) { // Sell order
-            int remaining_quantity = incoming_order.quantity;
-            std::cout << "Processing sell order: " << incoming_order.client_order_id << std::endl;
+            std::cout << "Incoming order is a buy order.\n";
+            if (sell_order_book.empty() || sell_order_book.top().price > incoming_order.price) {
+                execution_reports.push_back(ExecutionReport(
+                    incoming_order.order_id, incoming_order.client_order_id,
+                    incoming_order.instrument, 1, "New",
+                    incoming_order.quantity, incoming_order.price
+                ));
+            }
+            while (!sell_order_book.empty() && sell_order_book.top().price <= incoming_order.price && incoming_order.quantity > 0) {
+                Order sell_order = sell_order_book.top();
+                sell_order_book.pop();
 
-            // Match with buy orders starting from the highest price
-            for (auto it = buy_orders.rbegin(); it != buy_orders.rend() && remaining_quantity > 0; ) {
-                double buy_price = it->first;
-                std::vector<Order>& buy_order_list = it->second;
+                int trade_quantity = std::min(incoming_order.quantity, sell_order.quantity);
+                incoming_order.quantity -= trade_quantity;
+                sell_order.quantity -= trade_quantity;
 
-                for (auto& buy_order : buy_order_list) {
-                    if (remaining_quantity == 0) break;
+                execution_reports.push_back(ExecutionReport(
+                    incoming_order.order_id, incoming_order.client_order_id,
+                    incoming_order.instrument, 1, incoming_order.quantity == 0 ? "Fill" : "PFill",
+                    trade_quantity, sell_order.price
+                ));
 
-                    int trade_quantity = std::min(remaining_quantity, buy_order.quantity);
-                    remaining_quantity -= trade_quantity;
-                    buy_order.quantity -= trade_quantity;
+                execution_reports.push_back(ExecutionReport(
+                    sell_order.order_id, incoming_order.client_order_id,
+                    incoming_order.instrument, 2, sell_order.quantity == 0 ? "Fill" : "PFill",
+                    trade_quantity, sell_order.price
+                ));
 
-                    std::cout << "Matching sell order with buy order. Trade quantity: " << trade_quantity << std::endl;
-
-                    // Generate a "Fill" or "PFill" execution report for the buy order
-                    execution_reports.push_back({generate_order_id(order_count), buy_order.client_order_id,
-                                                 buy_order.instrument, 1, buy_order.quantity == 0 ? "Fill" : "PFill",
-                                                 trade_quantity, buy_price});
-                }
-
-                // Remove fully matched buy orders
-                buy_order_list.erase(std::remove_if(buy_order_list.begin(), buy_order_list.end(),
-                                                    [](const Order& o) { return o.quantity == 0; }),
-                                     buy_order_list.end());
-
-                if (buy_order_list.empty()) {
-                    it = std::map<double, std::vector<Order>>::reverse_iterator(buy_orders.erase(std::next(it).base()));
-                } else {
-                    ++it;
+                if (sell_order.quantity > 0) {
+                    sell_order_book.push(sell_order);
                 }
             }
+            if (incoming_order.quantity > 0) {
+                buy_order_book.push(incoming_order);
+            }
+        } else if (incoming_order.side == 2) { // Sell order
+            std::cout << "Incoming order is a sell order.\n";
+            if (buy_order_book.empty() || buy_order_book.top().price < incoming_order.price) {
+                execution_reports.push_back(ExecutionReport(
+                    incoming_order.order_id, incoming_order.client_order_id,
+                    incoming_order.instrument, 2, "New",
+                    incoming_order.quantity, incoming_order.price
+                ));
+            }
+            while (!buy_order_book.empty() && buy_order_book.top().price >= incoming_order.price && incoming_order.quantity > 0) {
+                Order buy_order = buy_order_book.top();
+                buy_order_book.pop();
 
-            std::string exec_status = remaining_quantity == incoming_order.quantity ? "New" : (remaining_quantity > 0 ? "PFill" : "Fill");
-            std::cout << "Sell order status: " << exec_status << ", Remaining quantity: " << remaining_quantity << std::endl;
+                int trade_quantity = std::min(incoming_order.quantity, buy_order.quantity);
+                incoming_order.quantity -= trade_quantity;
+                buy_order.quantity -= trade_quantity;
 
-            // Generate a "Fill" or "PFill" execution report for the sell order
-            execution_reports.push_back({generate_order_id(order_count), incoming_order.client_order_id,
-                                         incoming_order.instrument, 2, exec_status,
-                                         incoming_order.quantity - remaining_quantity, incoming_order.price});
+                execution_reports.push_back(ExecutionReport(
+                    buy_order.order_id, buy_order.client_order_id,
+                    buy_order.instrument, 1, buy_order.quantity == 0 ? "Fill" : "PFill",
+                    trade_quantity, buy_order.price
+                ));
+
+                execution_reports.push_back(ExecutionReport(
+                    incoming_order.order_id, buy_order.client_order_id,
+                    buy_order.instrument, 2, incoming_order.quantity == 0 ? "Fill" : "PFill",
+                    trade_quantity, buy_order.price
+                ));
+
+                if (buy_order.quantity > 0) {
+                    buy_order_book.push(buy_order);
+                }
+            }
+            if (incoming_order.quantity > 0) {
+                sell_order_book.push(incoming_order);
+            }
         }
     }
 
-    std::cout << "Finished processing orders. Total reports generated: " << execution_reports.size() << std::endl;
+    // Remaining unmatched buy and sell orders can be handled here if needed
+
 
     return execution_reports;
 }
-
 
 // This is just a placeholder for the actual ID generation logic.
 std::string generate_order_id(int& count) {
@@ -171,6 +216,8 @@ bool validate_order(const Order& order) {
 
 std::vector<Order> read_orders_from_csv(const std::string& file_path) {
     std::vector<Order> orders;
+    int order_count = 0;
+
     std::ifstream file(file_path);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open file");
@@ -201,7 +248,7 @@ std::vector<Order> read_orders_from_csv(const std::string& file_path) {
                 double price = std::stod(row[4]);
                 
 
-                orders.emplace_back(row[0], row[1], side, price, quantity);
+                orders.emplace_back(generate_order_id(order_count), row[0], row[1], side, price, quantity);
             } catch (const std::invalid_argument& e) {
                 // Handle the conversion error, e.g., skip the line or handle it as needed
                 std::cerr << "Error parsing line: " << line << "\n" << e.what() << std::endl;
@@ -247,7 +294,7 @@ int main() {
         outfile << report.order_id << ","
                 << report.client_order_id << ","
                 << report.instrument << ","
-                << (report.side == 1 ? "Buy" : "Sell") << ","
+                << report.side << ","
                 << report.exec_status << ","
                 << report.quantity << ","
                 << report.price << "\n"; // Use '\n' for new line in files instead of std::endl

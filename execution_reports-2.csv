@@ -1,4 +1,5 @@
 Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price
 ord1,aa13,Rose,2,New,100,55
 ord2,aa14,Rose,2,New,100,45
-ord3,aa15,Rose,1,New,100,35
+ord3,aa15,Rose,1,Fill,100,45
+ord2,aa15,Rose,2,Fill,100,45
