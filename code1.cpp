@@ -2,11 +2,13 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <queue> // Include this for priority_queue
+#include <queue>
 #include <string>
+#include <chrono>
 #include <map>
 #include <algorithm>
 #include <functional> 
+#include <iomanip>
 
 struct Order {
     std::string order_id;
@@ -37,19 +39,29 @@ struct ExecutionReport {
     std::string exec_status; // "New", "Fill", or "PFill"
     int quantity;
     double price;
+    std::string reason;
+    std::string timestamp;
 
     // Constructor for ExecutionReport
     ExecutionReport(const std::string& oid, const std::string& cid, const std::string& instr, int sd, 
-                    const std::string& status, int qty, double pr)
+                    const std::string& status, int qty, double pr, const std::string& r, const std::string& ts)
         : order_id(oid), client_order_id(cid), instrument(instr), side(sd), 
-          exec_status(status), quantity(qty), price(pr) {}
+          exec_status(status), quantity(qty), price(pr), reason(r), timestamp(ts) {}
 };
+
+std::string current_time() {
+    auto now = std::chrono::system_clock::now();
+    auto now_c = std::chrono::system_clock::to_time_t(now);
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+    return ss.str();
+}
 
 
 // Helper functions
 std::vector<Order> read_orders_from_csv(const std::string& file_path);
-bool validate_order(const Order& order); // Assume this is implemented elsewhere.
-std::string generate_order_id(int& count); // Assume this is implemented elsewhere.
+bool validate_order(const Order& order, std::string& reason);
+std::string generate_order_id(int& count);
 std::vector<ExecutionReport> process_orders(std::vector<Order>& orders);
 
 int safe_stoi(const std::string& str) {
@@ -86,11 +98,12 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
 
     for (Order incoming_order : orders) { // Create a modifiable copy of each incoming_order
         std::cout << "Processing order: " << incoming_order.client_order_id << "\n";
-        if (!validate_order(incoming_order)) {
+        std::string validationReason;
+        if (!validate_order(incoming_order, validationReason)) {
             execution_reports.push_back(ExecutionReport(
                 incoming_order.order_id, incoming_order.client_order_id,
                 incoming_order.instrument, incoming_order.side, "Rejected",
-                incoming_order.quantity, incoming_order.price
+                incoming_order.quantity, incoming_order.price, validationReason, current_time()
             ));
             continue;
         }
@@ -101,7 +114,7 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
                 execution_reports.push_back(ExecutionReport(
                     incoming_order.order_id, incoming_order.client_order_id,
                     incoming_order.instrument, 1, "New",
-                    incoming_order.quantity, incoming_order.price
+                    incoming_order.quantity, incoming_order.price, "", current_time()
                 ));
             }
             while (!sell_order_book.empty() && sell_order_book.top().price <= incoming_order.price && incoming_order.quantity > 0) {
@@ -115,13 +128,13 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
                 execution_reports.push_back(ExecutionReport(
                     incoming_order.order_id, incoming_order.client_order_id,
                     incoming_order.instrument, 1, incoming_order.quantity == 0 ? "Fill" : "PFill",
-                    trade_quantity, sell_order.price
+                    trade_quantity, sell_order.price, "", current_time()
                 ));
 
                 execution_reports.push_back(ExecutionReport(
                     sell_order.order_id, incoming_order.client_order_id,
                     incoming_order.instrument, 2, sell_order.quantity == 0 ? "Fill" : "PFill",
-                    trade_quantity, sell_order.price
+                    trade_quantity, sell_order.price, "", current_time()
                 ));
 
                 if (sell_order.quantity > 0) {
@@ -137,7 +150,7 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
                 execution_reports.push_back(ExecutionReport(
                     incoming_order.order_id, incoming_order.client_order_id,
                     incoming_order.instrument, 2, "New",
-                    incoming_order.quantity, incoming_order.price
+                    incoming_order.quantity, incoming_order.price, "", current_time()
                 ));
             }
             while (!buy_order_book.empty() && buy_order_book.top().price >= incoming_order.price && incoming_order.quantity > 0) {
@@ -151,13 +164,13 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
                 execution_reports.push_back(ExecutionReport(
                     buy_order.order_id, buy_order.client_order_id,
                     buy_order.instrument, 1, buy_order.quantity == 0 ? "Fill" : "PFill",
-                    trade_quantity, buy_order.price
+                    trade_quantity, buy_order.price, "", current_time()
                 ));
 
                 execution_reports.push_back(ExecutionReport(
                     incoming_order.order_id, buy_order.client_order_id,
                     buy_order.instrument, 2, incoming_order.quantity == 0 ? "Fill" : "PFill",
-                    trade_quantity, buy_order.price
+                    trade_quantity, buy_order.price, "", current_time()
                 ));
 
                 if (buy_order.quantity > 0) {
@@ -182,37 +195,36 @@ std::string generate_order_id(int& count) {
 }
 
 // Assume validate_order is implemented to check order parameters such as price and quantity.
-bool validate_order(const Order& order) {
+bool validate_order(const Order& order, std::string& reason) {
     // Check if the instrument is valid
     std::vector<std::string> valid_instruments = {"Rose", "Lavender", "Lotus", "Tulip", "Orchid"};
     if (std::find(valid_instruments.begin(), valid_instruments.end(), order.instrument) == valid_instruments.end()) {
-        std::cout << "Invalid instrument: " << order.instrument << std::endl;
+        reason = "Invalid instrument: " + order.instrument;
         return false;
     }
 
     // Check if the side is valid (1 for buy, 2 for sell)
     if (order.side != 1 && order.side != 2) {
-        std::cout << "Invalid side for order " << order.client_order_id << ": " << order.side << std::endl;
+        reason = "Invalid side for order " + order.client_order_id + ": " + std::to_string(order.side);
         return false;
     }
 
     // Check if the price is greater than 0
     if (order.price <= 0) {
-        std::cout << "Invalid price for order " << order.client_order_id << ": " << order.price << std::endl;
+        reason = "Invalid price for order " + order.client_order_id + ": " + std::to_string(order.price);
         return false;
     }
 
     // Check if the quantity is a multiple of 10 and within the range [10, 1000]
     if (order.quantity % 10 != 0 || order.quantity < 10 || order.quantity > 1000) {
-        std::cout << "Invalid quantity for order " << order.client_order_id << ": " << order.quantity << std::endl;
+        reason = "Invalid quantity for order " + order.client_order_id + ": " + std::to_string(order.quantity);
         return false;
     }
 
-    std::cout << "Order " << order.client_order_id << " is valid." << std::endl;
-
-    // If all checks pass, the order is valid
+    reason = "Order " + order.client_order_id + " is valid.";
     return true;
 }
+
 
 std::vector<Order> read_orders_from_csv(const std::string& file_path) {
     std::vector<Order> orders;
@@ -262,7 +274,7 @@ std::vector<Order> read_orders_from_csv(const std::string& file_path) {
 
 int main() {
     std::string input_file_path = "order-1.csv"; // The path to your CSV file
-    std::string output_file_path = "execution_reports-1.csv"; // Path for the output file
+    std::string output_file_path = "execution_rep-1.csv"; // Path for the output file
 
     std::vector<Order> orders = read_orders_from_csv(input_file_path);
     std::cout << "Number of orders read: " << orders.size() << std::endl;
@@ -287,19 +299,23 @@ int main() {
     }
 
     // Write the column headers
-    outfile << "Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price\n";
+    outfile << "Client Order ID,Order ID,Instrument,Side,Price,Quantity,Status,Reason,Transaction Time \n";
 
     // Write the execution reports to the file in CSV format
     for (const auto& report : reports) {
-        outfile << report.order_id << ","
-                << report.client_order_id << ","
+        outfile << report.client_order_id << ","
+                << report.order_id << ","
                 << report.instrument << ","
                 << report.side << ","
-                << report.exec_status << ","
+                << report.price << ","
                 << report.quantity << ","
-                << report.price << "\n"; // Use '\n' for new line in files instead of std::endl
+                << report.exec_status << ","
+                << report.reason << ","
+                << report.timestamp << "\n";
     }
 
     outfile.close();
     return 0;
+    
 }
+
