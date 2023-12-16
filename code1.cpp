@@ -49,11 +49,32 @@ struct ExecutionReport {
           exec_status(status), quantity(qty), price(pr), reason(r), timestamp(ts) {}
 };
 
+// std::string current_time() {
+//     auto now = std::chrono::system_clock::now();
+//     auto now_c = std::chrono::system_clock::to_time_t(now);
+//     std::stringstream ss;
+//     ss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+//     return ss.str();
+// }
+
 std::string current_time() {
+    // Get the current time
     auto now = std::chrono::system_clock::now();
+
+    // Get the number of milliseconds since the last second (remainder after division into seconds)
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+
+    // Convert system time to `time_t` in order to convert to calendar time
     auto now_c = std::chrono::system_clock::to_time_t(now);
+
+    // Convert to `tm` struct for use with `strftime`
+    std::tm now_tm = *std::localtime(&now_c);
+
+    // Use a stringstream to concatenate the formatted date/time with milliseconds
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+    ss << std::put_time(&now_tm, "%Y%m%d-%H%M%S"); // Format without the milliseconds
+    ss << '.' << std::setfill('0') << std::setw(3) << ms.count(); // Add milliseconds
+
     return ss.str();
 }
 
@@ -90,6 +111,12 @@ struct SellOrderCompare {
         return lhs.price > rhs.price; // Lower price first
     }
 };
+
+// TO DO : 
+// 0 – New
+// 1 – Rejected
+// 2 – Fill
+// 3 - Pfill
 
 std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
     std::vector<ExecutionReport> execution_reports;
@@ -275,8 +302,8 @@ std::vector<Order> read_orders_from_csv(const std::string& file_path) {
 
 
 int main() {
-    std::string input_file_path = "order-1.csv"; // The path to your CSV file
-    std::string output_file_path = "execution_rep-1.csv"; // Path for the output file
+    std::string input_file_path = "files/inputs/orders - large.csv"; // The path to your CSV file
+    std::string output_file_path = "files/inputs/execution_rep - large.csv"; // Path for the output file
 
     std::vector<Order> orders = read_orders_from_csv(input_file_path);
     std::cout << "Number of orders read: " << orders.size() << std::endl;
