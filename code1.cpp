@@ -108,6 +108,8 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
             continue;
         }
 
+        
+
         if (incoming_order.side == 1) { // Buy order
             std::cout << "Incoming order is a buy order.\n";
             if (sell_order_book.empty() || sell_order_book.top().price > incoming_order.price) {
@@ -132,7 +134,7 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
                 ));
 
                 execution_reports.push_back(ExecutionReport(
-                    sell_order.order_id, incoming_order.client_order_id,
+                    sell_order.order_id, sell_order.client_order_id,
                     incoming_order.instrument, 2, sell_order.quantity == 0 ? "Fill" : "PFill",
                     trade_quantity, sell_order.price, "", current_time()
                 ));
@@ -168,7 +170,7 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
                 ));
 
                 execution_reports.push_back(ExecutionReport(
-                    incoming_order.order_id, buy_order.client_order_id,
+                    incoming_order.order_id, incoming_order.client_order_id,
                     buy_order.instrument, 2, incoming_order.quantity == 0 ? "Fill" : "PFill",
                     trade_quantity, buy_order.price, "", current_time()
                 ));
