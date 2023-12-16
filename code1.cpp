@@ -223,28 +223,24 @@ std::string generate_order_id(int& count) {
     return "ord" + std::to_string(++count);
 }
 
-// Assume validate_order is implemented to check order parameters such as price and quantity.
 bool validate_order(const Order& order, std::string& reason) {
-    // Check if the instrument is valid
-    std::vector<std::string> valid_instruments = {"Rose", "Lavender", "Lotus", "Tulip", "Orchid"};
-    if (std::find(valid_instruments.begin(), valid_instruments.end(), order.instrument) == valid_instruments.end()) {
+    static const std::set<std::string> valid_instruments = {"Rose", "Lavender", "Lotus", "Tulip", "Orchid"};
+    
+    if (valid_instruments.find(order.instrument) == valid_instruments.end()) {
         reason = "Invalid instrument: " + order.instrument;
         return false;
     }
 
-    // Check if the side is valid (1 for buy, 2 for sell)
     if (order.side != 1 && order.side != 2) {
         reason = "Invalid side for order " + order.client_order_id + ": " + std::to_string(order.side);
         return false;
     }
 
-    // Check if the price is greater than 0
     if (order.price <= 0) {
         reason = "Invalid price for order " + order.client_order_id + ": " + std::to_string(order.price);
         return false;
     }
 
-    // Check if the quantity is a multiple of 10 and within the range [10, 1000]
     if (order.quantity % 10 != 0 || order.quantity < 10 || order.quantity > 1000) {
         reason = "Invalid quantity for order " + order.client_order_id + ": " + std::to_string(order.quantity);
         return false;
@@ -253,7 +249,6 @@ bool validate_order(const Order& order, std::string& reason) {
     reason = "Order " + order.client_order_id + " is valid.";
     return true;
 }
-
 
 std::vector<Order> read_orders_from_csv(const std::string& file_path) {
     std::vector<Order> orders;
@@ -299,6 +294,37 @@ std::vector<Order> read_orders_from_csv(const std::string& file_path) {
     return orders;
 }
 
+int write_execution_reports_to_csv(const std::string& output_file_path, const std::vector<ExecutionReport>& reports) {
+    std::ofstream outfile(output_file_path);
+    if (!outfile.is_open()) {
+        std::cerr << "Failed to open the output file." << std::endl;
+        return 1;
+    }
+
+    // Write the column headers
+    outfile << "Client Order ID,Order ID,Instrument,Side,Price,Quantity,Status,Reason,Transaction Time\n";
+
+    // Write the execution reports to the file in CSV format
+    for (const auto& report : reports) {
+        std::ostringstream line;
+        line << report.client_order_id << ","
+             << report.order_id << ","
+             << report.instrument << ","
+             << (report.side == 1 ? "Buy" : "Sell") << ","
+             << report.price << ","
+             << report.quantity << ","
+             << report.exec_status << ","
+             << report.reason << ","
+             << report.timestamp << "\n";
+        outfile << line.str();
+    }
+
+    outfile.close();
+
+    return 0;
+}
+
+
 
 
 int main() {
@@ -321,30 +347,17 @@ int main() {
         return 1;
     }
 
-    std::ofstream outfile(output_file_path);
-    if (!outfile.is_open()) {
-        std::cerr << "Failed to open the output file." << std::endl;
+    std::vector<ExecutionReport> reports = process_orders(orders);
+    std::cout << "Number of execution reports generated: " << reports.size() << std::endl;
+
+    if (reports.empty()) {
+        std::cerr << "No execution reports were generated." << std::endl;
         return 1;
     }
 
-    // Write the column headers
-    outfile << "Client Order ID,Order ID,Instrument,Side,Price,Quantity,Status,Reason,Transaction Time \n";
+    int result = write_execution_reports_to_csv(output_file_path, reports);
 
-    // Write the execution reports to the file in CSV format
-    for (const auto& report : reports) {
-        outfile << report.client_order_id << ","
-                << report.order_id << ","
-                << report.instrument << ","
-                << report.side << ","
-                << report.price << ","
-                << report.quantity << ","
-                << report.exec_status << ","
-                << report.reason << ","
-                << report.timestamp << "\n";
-    }
-
-    outfile.close();
-    return 0;
+    return result;
     
 }
 
