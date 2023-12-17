@@ -10,7 +10,7 @@ The Flower Exchange is a trading system designed for the basic trading of flower
 - **Order Validation:** Orders may be rejected due to quantity limitations, invalid flower types, etc.
 
 ## Implementation
-The system is implemented in C++ and only includes algorithms to generate execution reports for given order files (submission.cpp). This robust and efficient approach ensures smooth operation and accurate order processing.
+The system is implemented in C++ and only includes algorithms to generate execution reports for given order files ([submission](https://github.com/KasunAb/Flower-Exchange-System/blob/main/submission.cpp)). This robust and efficient approach ensures smooth operation and accurate order processing.
 
 ## Improvements
 To enhance the performance of the code, the following improvements have been implemented:
@@ -24,10 +24,10 @@ To enhance the performance of the code, the following improvements have been imp
 Two undergraduate students from the University of Moratuwa developed this project, specializing in Data Science and Machine Learning within the Computer Science & Engineering department.
 
 ### Kasun Abegunawardhana
-- **Email:** [kasunabegunawardhana.19@cse.mrt.ac.lk](mailto:kasunabegunawardhana.19@cse.mrt.ac.lk)
+- **Email:** [kasunabegunawardhana.19@cse.mrt.ac.lk]([mailto:kasunabegunawardhana.19@cse.mrt.ac.lk](https://github.com/KasunAb))
 
 ### Dilusha Madushan
-- **Email:** [dilusha.19@cse.mrt.ac.lk](mailto:dilusha.19@cse.mrt.ac.lk)
+- **Email:** [dilusha.19@cse.mrt.ac.lk]([mailto:dilusha.19@cse.mrt.ac.lk](https://github.com/Dilusha-Madushan)https://github.com/Dilusha-Madushan)
 
 ## License
 [MIT License](LICENSE)
