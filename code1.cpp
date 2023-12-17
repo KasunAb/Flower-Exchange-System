@@ -135,8 +135,6 @@ std::vector<ExecutionReport> process_orders(std::vector<Order>& orders) {
             continue;
         }
 
-        
-
         if (incoming_order.side == 1) { // Buy order
             std::cout << "Incoming order is a buy order.\n";
             if (sell_order_book.empty() || sell_order_book.top().price > incoming_order.price) {
