@@ -24,10 +24,10 @@ To enhance the performance of the code, the following improvements have been imp
 Two undergraduate students from the University of Moratuwa developed this project, specializing in Data Science and Machine Learning within the Computer Science & Engineering department.
 
 ### Kasun Abegunawardhana
-- **Email:** [kasunabegunawardhana.19@cse.mrt.ac.lk](https://github.com/KasunAb)
+- **Email:** [kasunabegunawardhana.19@cse.mrt.ac.lk](mailto://github.com/KasunAb)
 
 ### Dilusha Madushan
-- **Email:** [dilusha.19@cse.mrt.ac.lk](https://github.com/Dilusha-Madushan)
+- **Email:** [dilusha.19@cse.mrt.ac.lk](mailto://github.com/Dilusha-Madushan)
 
 ## License
 [MIT License](LICENSE)
