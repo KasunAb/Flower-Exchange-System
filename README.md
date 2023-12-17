@@ -16,10 +16,10 @@ The system is implemented in C++ and includes algorithms to generate execution r
 This project was developed by two undergraduate students from the University of Moratuwa, specializing in Data Science and Machine Learning within the Computer Science & Engineering department.
 
 ### Kasun Abegunawardhana
-- **Email:** [kasun.abegunawardhana@example.com](mailto:kasun.abegunawardhana@example.com)
+- **Email:** [kasunabegunawardhana.19@cse.mrt.ac.lk](mailto:kasunabegunawardhana.19@cse.mrt.ac.lk)
 
-### Dilusha Maushan
-- **Email:** [dilusha.maushan@example.com](mailto:dilusha.maushan@example.com)
+### Dilusha Madushan
+- **Email:** [dilusha.19@cse.mrt.ac.lk](mailto:dilusha.19@cse.mrt.ac.lk)
 
 ## License
 [MIT License](LICENSE)
