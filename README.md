@@ -9,8 +9,8 @@ The Flower Exchange is a trading system designed for the basic trading of flower
 - **Execution Report:** Every order is responded to with an Execution Report by the Exchange Application, indicating the status of the order.
 - **Order Validation:** Orders may be rejected due to quantity limitations, invalid flower types, etc.
 
-## Technical Implementation
-The system is implemented in C++ and includes algorithms to generate execution reports for given order files. This robust and efficient approach ensures smooth operation and accurate order processing.
+## Implementation
+The system is implemented in C++ and only includes algorithms to generate execution reports for given order files (submission.cpp). This robust and efficient approach ensures smooth operation and accurate order processing.
 
 ## Improvements
 To enhance the performance of the code, the following improvements have been implemented:
