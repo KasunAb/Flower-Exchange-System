@@ -12,8 +12,16 @@ The Flower Exchange is a trading system designed for the basic trading of flower
 ## Technical Implementation
 The system is implemented in C++ and includes algorithms to generate execution reports for given order files. This robust and efficient approach ensures smooth operation and accurate order processing.
 
+## Improvements
+To enhance the performance of the code, the following improvements have been implemented:
+
+- **Thread-Safe Queue for Execution Reports:** A thread-safe queue has been introduced for managing execution reports. This queue ensures the execution reports are handled efficiently in a multi-threaded environment.
+
+- **Writer Thread for Report Writing:** A dedicated writer thread is utilized to write the execution reports into a CSV file. This approach follows the producer-consumer model, significantly improving the performance by allowing simultaneous processing and report generation.
+
+
 ## Team Members
-This project was developed by two undergraduate students from the University of Moratuwa, specializing in Data Science and Machine Learning within the Computer Science & Engineering department.
+Two undergraduate students from the University of Moratuwa developed this project, specializing in Data Science and Machine Learning within the Computer Science & Engineering department.
 
 ### Kasun Abegunawardhana
 - **Email:** [kasunabegunawardhana.19@cse.mrt.ac.lk](mailto:kasunabegunawardhana.19@cse.mrt.ac.lk)
